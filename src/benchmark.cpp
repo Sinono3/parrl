@@ -1,12 +1,12 @@
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
 
-#include "CarRacing.hpp"
+#include "Cartpole.hpp"
 
 int main()
 {
     // create the window
-    CarRacing env;
+    Cartpole env;
     env.reset();
 
     constexpr int STEPS = 20000;
@@ -14,7 +14,8 @@ int main()
     sf::Clock clock; 
     clock.start();
     for (int i = 0; i < STEPS; i++) {
-        auto [state, step_reward, done] = env.step({0.0f, 0.0f, 0.0f});
+        // Assumes time taken is the same independent of the action.
+        auto [state, step_reward, done] = env.step(CartpoleAction::Left);
         if (done)
             env.reset();
 	}
