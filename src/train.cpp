@@ -1,130 +1,127 @@
-#include <fstream>
-#include <iostream>
-#include <filesystem>
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#pragma clang diagnostic ignored "-Weverything"
 #include <torch/torch.h>
 #pragma clang diagnostic pop
 
-#include "CarRacing.hpp"
-#include "PPO.hpp"
-#include "util.hpp"
+#include "Cartpole.hpp"
+
+// TODO: Reimplement
+torch::Tensor policyFromNet(torch::nn::Sequential &net,
+							const torch::Tensor &state) {
+	auto logits = net->forward(state);
+	auto probs = torch::softmax(logits, -1);
+	return probs;
+}
+
+// TODO: Reimplement
+std::pair<int, torch::Tensor> chooseAction(const torch::Tensor &probs) {
+	auto action_tensor = torch::multinomial(probs, /*num_samples=*/1);
+	int action = action_tensor.item<int>();
+	auto log_prob = torch::log(probs[action]);
+	return {action, log_prob};
+}
+
+// TODO: Reimplement
+torch::Tensor returnsFromRewards(const std::vector<float> &rewards) {
+	constexpr float GAMMA = 0.99f;
+
+	auto rewards_tensor = torch::tensor(rewards);
+	size_t len = rewards.size();
+
+	// Create gamma vector
+	auto arange =
+		torch::arange((float)len, torch::TensorOptions().dtype(torch::kFloat));
+	auto gammavec = torch::pow(GAMMA, arange);
+
+	// Calculate returns
+	auto flipped_rewards = torch::flip(rewards_tensor, {0});
+	auto weighted = flipped_rewards * gammavec;
+	auto cumsum = torch::cumsum(weighted, 0);
+	auto returns = torch::flip(cumsum, {0}) / gammavec;
+
+	// Normalize
+	auto mean = returns.mean();
+	auto std = returns.std();
+	returns = (returns - mean) / (std + 1e-8);
+
+	return returns;
+}
 
 int main() {
-	auto max_ep_len = 1000;
-	auto max_training_timesteps = (int)(5e6);
+	auto net =
+		torch::nn::Sequential(torch::nn::Linear(4, 128), torch::nn::ReLU(),
+							  torch::nn::Linear(128, 2));
+	auto opt =
+		torch::optim::Adam(net->parameters(), torch::optim::AdamOptions(0.01));
 
-	// Hyperparameters related to action standard deviation
-	float action_std_init = 0.5;
-	float action_std_decay_rate = 0.05;
-	float action_std_min = 0.05;
-	int action_std_decay_freq = (int)(2.5e5);
+	Cartpole env;
 
-	// Hyperparameters
-	auto update_timestep = max_ep_len * 4;
-	auto K_epochs = 1;
-	auto eps_clip = 0.2;
-	auto gamma = 0.99;
-	auto lr = 0.0003;
+	constexpr int EP_BATCHES = 1000000;
+	constexpr int EPS_TO_TRY = 100;
+	constexpr int EPS_TO_LEARN = 2;
 
-	// Saving utils
-	auto save_freq = max_ep_len * 4;
+	struct Episode {
+		float total_reward;
+		std::vector<float> rewards;
+		std::vector<torch::Tensor> log_probs;
+	};
 
-	// Printing utils
-	auto print_freq = max_ep_len * 10;
-	auto print_running_reward = 0.0f;
-	auto print_running_episodes = 0;
-	auto best_running_reward = 0.0f;
+	for (int batch = 1; batch <= EP_BATCHES; batch++) {
+		net->train();
 
-	CarRacing env(false);
-	PPO ppo(std::vector<int64_t>{3, 96, 96}, (int64_t)3, lr, gamma, K_epochs,
-			eps_clip, action_std_init);
+		// Experience acquisition
+		std::vector<Episode> episodes;
+		for (int ep = 1; ep <= EPS_TO_TRY; ep++) {
+			float total_reward = 0.0f;
+			std::vector<float> rewards;
+			std::vector<torch::Tensor> log_probs;
 
-	// DEBUG: Load checkpoint
-	// torch::load(ppo.policy, "model.pt");
+			auto obs = env.reset();
 
-	auto time_step = 0;
-	auto i_episode = 0;
+			for (int step_idx = 0; step_idx < 10000; step_idx++) {
+				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
+				auto [action, log_prob] =
+					chooseAction(policyFromNet(net, obs_tensor));
 
-	std::filesystem::create_directory("./checkpoint");
+				auto step = env.step((CartpoleAction)action);
+				obs = step.obs;
+				rewards.push_back(step.reward);
+				log_probs.push_back(log_prob);
+				total_reward += step.reward;
 
-	std::ofstream policyLossLog;
-	std::ofstream rewardLog;
-	policyLossLog.open("checkpoint/loss.csv");
-	rewardLog.open("checkpoint/reward.csv");
-
-	if (!policyLossLog.is_open()) {
-		std::println("Couldn't open checkpoint/loss.csv");
-		return 1;
-	}
-
-	if (!rewardLog.is_open()) {
-		std::println("Couldn't open checkpoint/reward.csv");
-		return 1;
-	}
-
-	while (time_step <= max_training_timesteps) {
-		auto state = imageToTensor(env.reset());
-		auto current_ep_reward = 0.0f;
-
-		for (uint t = 0; t < max_ep_len; t++) {
-			auto action = ppo.select_action(state);
-			float steer = action[0][0].item<float>();
-			float gas = action[0][1].item<float>();
-			float brake = action[0][2].item<float>();
-
-			auto [stateImage, reward, done] = env.step({steer, gas, brake});
-			state = imageToTensor(stateImage);
-
-			ppo.buffer.rewards.push_back(reward);
-			ppo.buffer.is_terminals.push_back(done);
-
-			time_step++;
-			current_ep_reward += reward;
-
-			if (time_step % update_timestep == 0) {
-				auto loss = ppo.update();
-				policyLossLog << time_step << ',' << loss << '\n' << std::flush;
+				if (step.done)
+					break;
 			}
 
-			if (time_step % action_std_decay_freq == 0)
-				ppo.decay_action_std(action_std_decay_rate, action_std_min);
-
-			if (time_step % print_freq == 0) {
-				auto print_avg_reward =
-					print_running_reward / print_running_episodes;
-				std::println("Episode : {} \t\t Timestep : {} \t\t Average "
-							 "Reward Per Episode : {}",
-							 i_episode, time_step, print_avg_reward);
-				if (print_running_reward > best_running_reward) {
-					std::string base = "checkpoint/";
-					std::println(
-						"Saving best to best_model.pt,best_opt.pt to {}", base);
-					torch::save(ppo.policy, base + "best_model.pt");
-					torch::save(ppo.opt, base + "best_opt.pt");
-					best_running_reward = print_running_reward;
-				}
-
-				print_running_reward = 0;
-				print_running_episodes = 0;
-			}
-
-			if (time_step % save_freq == 0) {
-				std::string base = "checkpoint/";
-				std::println("Saving model.pt,opt.pt to {}", base);
-				torch::save(ppo.policy, base + "model.pt");
-				torch::save(ppo.opt, base + "opt.pt");
-			}
-
-			if (done)
-				break;
+			episodes.push_back({total_reward, rewards, log_probs});
 		}
-		print_running_reward += current_ep_reward;
-		print_running_episodes++;
-		i_episode++;
-	}
 
-	policyLossLog.close();
-	rewardLog.close();
-	return 0;
+		auto total_reward = 0.0f;
+		for (auto &ep : episodes)
+			total_reward += ep.total_reward;
+		auto avg_reward = total_reward / (float)episodes.size();
+
+		std::sort(episodes.begin(), episodes.end(),
+				  [](const auto &a, const auto &b) {
+					  return a.total_reward > b.total_reward;
+				  });
+
+		if (episodes.begin() + EPS_TO_LEARN < episodes.end())
+			episodes.erase(episodes.begin() + EPS_TO_LEARN + 1, episodes.end());
+
+		auto losses = torch::zeros({1});
+
+		for (auto &[_, rewards, log_probs] : episodes) {
+			auto log_probs2 = torch::stack(log_probs);
+			auto returns = returnsFromRewards(rewards);
+			losses += torch::sum(-returns * log_probs2);
+		}
+
+		opt.zero_grad();
+		losses.backward();
+		opt.step();
+
+		std::println("Batch {} over. Avg reward: {}.", batch, avg_reward);
+		// TODO: testing/validation
+	}
 }
