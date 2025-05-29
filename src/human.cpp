@@ -8,9 +8,6 @@
 #include <SFML/Window.hpp>
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Window.hpp>
-#include <box2d/box2d.h>
-#include <box2d/math_functions.h>
-#include <box2d/types.h>
 
 #include "Cartpole.hpp"
 #include "CartpoleRenderer.hpp"
