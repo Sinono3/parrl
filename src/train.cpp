@@ -76,7 +76,6 @@ int main() {
 		rewards.clear();
 		dones.clear();
 		log_probs.clear();
-
 		net->train();
 
 		// Experience acquisition
@@ -114,6 +113,7 @@ int main() {
 			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros,
 						 (double)micros / (double)(1000000000));
 
+			net->eval();
 			testAgent([&](auto obs) {
 				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
 				return chooseAction(net, obs_tensor);
