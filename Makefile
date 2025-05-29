@@ -5,7 +5,7 @@ CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml
 LDFLAGS=$(shell pkg-config --libs sfml-all torch box2d)
 
 # DEBUG: macOS flags
-CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23  $(shell pkg-config --cflags sfml-all) \
+CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml-all) \
 	-I/opt/homebrew/include -I/opt/homebrew/opt/box2d/include\
 	-I/opt/homebrew/include/torch/csrc/api/include
 LDFLAGS=$(shell pkg-config --libs sfml-all) \
@@ -27,21 +27,21 @@ builddir/test.o: src/test.cpp
 builddir/benchmark.o: src/benchmark.cpp
 	mkdir -p builddir
 	$(CC) -c $(CFLAGS) $< -Iinc -o $@
-
+	
 builddir/human.o: src/human.cpp
 	mkdir -p builddir
 	$(CC) -c $(CFLAGS) $< -Iinc -o $@
 
-train: builddir/train.o builddir/util.o
+train: builddir/train.o builddir/util.o builddir/Cartpole.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-test: builddir/test.o builddir/util.o
+test: builddir/test.o builddir/util.o builddir/CartpoleRenderer.o builddir/Cartpole.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
-benchmark: builddir/benchmark.o builddir/util.o
+benchmark: builddir/benchmark.o builddir/util.o builddir/Cartpole.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
-human: builddir/human.o builddir/util.o
+human: builddir/human.o builddir/util.o builddir/CartpoleRenderer.o builddir/Cartpole.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
 clean: 
