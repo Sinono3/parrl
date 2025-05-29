@@ -4,6 +4,7 @@
 #pragma clang diagnostic pop
 
 #include "Cartpole.hpp"
+#include "test.hpp"
 
 std::pair<int, torch::Tensor> chooseAction(torch::nn::Sequential &net,
 										   const torch::Tensor &obs) {
@@ -18,7 +19,8 @@ std::pair<int, torch::Tensor> chooseAction(torch::nn::Sequential &net,
 	return {action, log_prob};
 }
 
-torch::Tensor returnsFromRewards(const std::vector<float> &rewards, const std::vector<bool>& dones) {
+torch::Tensor returnsFromRewards(const std::vector<float> &rewards,
+								 const std::vector<bool> &dones) {
 	constexpr float GAMMA = 0.99f;
 	auto stepcount = (long long)rewards.size();
 	auto returns = torch::empty({stepcount});
@@ -37,7 +39,8 @@ torch::Tensor returnsFromRewards(const std::vector<float> &rewards, const std::v
 	return returns;
 }
 
-float getAverageEpisodeReward(const std::vector<float> &rewards, const std::vector<bool>& dones) {
+float getAverageEpisodeReward(const std::vector<float> &rewards,
+							  const std::vector<bool> &dones) {
 	int totalEpisodeCount = 0;
 	float totalReward = 0.0f;
 
@@ -62,7 +65,7 @@ int main() {
 
 	constexpr int EPOCHS = 1000000;
 	constexpr int STEPS = 1000;
-	constexpr float TARGET_AVG_REWARD = 150.0f;
+	constexpr float TARGET_AVG_REWARD = 300.0f;
 
 	std::vector<float> rewards;
 	std::vector<bool> dones;
@@ -110,8 +113,11 @@ int main() {
 			auto micros = (stop - start).count();
 			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros,
 						 (double)micros / (double)(1000000000));
-			
-			// TODO: Save model
+
+			testAgent([&](auto obs) {
+				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
+				return chooseAction(net, obs_tensor);
+			});
 			return 0;
 		}
 	}
