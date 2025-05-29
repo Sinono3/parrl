@@ -3,12 +3,10 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #     "gymnasium",
-#     "numpy",
 # ]
 # ///
 
 import gymnasium as gym
-import numpy as np
 import time
 
 env = gym.make("CartPole-v1")
