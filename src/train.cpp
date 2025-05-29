@@ -18,19 +18,35 @@ std::pair<int, torch::Tensor> chooseAction(torch::nn::Sequential &net,
 	return {action, log_prob};
 }
 
-torch::Tensor returnsFromRewards(const std::vector<float> &rewards) {
+torch::Tensor returnsFromRewards(const std::vector<float> &rewards, const std::vector<bool>& dones) {
 	constexpr float GAMMA = 0.99f;
 	auto stepcount = (long long)rewards.size();
 	auto returns = torch::empty({stepcount});
 	returns[stepcount - 1] = rewards[(size_t)stepcount - 1];
 
 	for (auto i = stepcount - 2; i >= 0; i--) {
-		returns[i] = rewards[(size_t)i] + GAMMA * returns[i + 1];
+		// If done, we don't add the returns
+		if (dones[(size_t)i])
+			returns[i] = rewards[(size_t)i];
+		else
+			returns[i] = rewards[(size_t)i] + GAMMA * returns[i + 1];
 	}
 
 	// normalize
 	returns = (returns - returns.mean()) / (returns.std() + 1e-8);
 	return returns;
+}
+
+float getAverageEpisodeReward(const std::vector<float> &rewards, const std::vector<bool>& dones) {
+	int totalEpisodeCount = 0;
+	float totalReward = 0.0f;
+
+	for (size_t i = 0; i < rewards.size(); i++) {
+		totalReward += rewards[i];
+		if (dones[(size_t)i])
+			totalEpisodeCount++;
+	}
+	return totalReward / (float)totalEpisodeCount;
 }
 
 int main() {
@@ -45,62 +61,47 @@ int main() {
 	Cartpole env;
 
 	constexpr int EPOCHS = 1000000;
-	constexpr int EPISODES = 50;
+	constexpr int STEPS = 1000;
 	constexpr float TARGET_AVG_REWARD = 150.0f;
 
-	struct Episode {
-		std::vector<float> rewards;
-		std::vector<torch::Tensor> log_probs;
-	};
+	std::vector<float> rewards;
+	std::vector<bool> dones;
+	std::vector<torch::Tensor> log_probs;
 
 	auto start = std::chrono::high_resolution_clock::now();
 	for (int epoch = 1; epoch <= EPOCHS; epoch++) {
+		rewards.clear();
+		dones.clear();
+		log_probs.clear();
+
 		net->train();
 
 		// Experience acquisition
-		std::vector<Episode> episodes;
-		for (int episode = 1; episode <= EPISODES; episode++) {
-			std::vector<float> rewards;
-			std::vector<torch::Tensor> log_probs;
+		auto obs = env.reset();
+		for (int step_idx = 0; step_idx < STEPS; step_idx++) {
+			auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
+			auto [action, log_prob] = chooseAction(net, obs_tensor);
 
-			auto obs = env.reset();
+			auto step = env.step((CartpoleAction)action);
+			obs = step.obs;
+			rewards.push_back(step.reward);
+			dones.push_back(step.done);
+			log_probs.push_back(log_prob);
 
-			for (int step_idx = 0; step_idx < 10000; step_idx++) {
-				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
-				auto [action, log_prob] = chooseAction(net, obs_tensor);
-
-				auto step = env.step((CartpoleAction)action);
-				obs = step.obs;
-				rewards.push_back(step.reward);
-				log_probs.push_back(log_prob);
-
-				if (step.done)
-					break;
-			}
-
-			episodes.push_back({rewards, log_probs});
+			if (step.done)
+				obs = env.reset();
 		}
 
-		auto losses = torch::zeros({1});
-
-		for (auto &[rewards, log_probs] : episodes) {
-			auto log_probs_tensor = torch::stack(log_probs);
-			auto returns = returnsFromRewards(rewards);
-			auto advantages = returns - returns.mean();
-			losses += torch::sum(-advantages * log_probs_tensor);
-			break;
-		}
+		// Training on experience
+		auto returns = returnsFromRewards(rewards, dones);
+		auto advantages = returns - returns.mean();
+		auto loss = -torch::mean(advantages * torch::stack(log_probs));
 
 		opt.zero_grad();
-		losses.backward();
+		loss.backward();
 		opt.step();
 
-		auto avg_reward = 0.0f;
-		for (auto &ep : episodes)
-			for (auto reward : ep.rewards)
-				avg_reward += reward;
-		avg_reward /= (float)episodes.size();
-
+		auto avg_reward = getAverageEpisodeReward(rewards, dones);
 		std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
 		// TODO: testing/validation
 
@@ -109,6 +110,8 @@ int main() {
 			auto micros = (stop - start).count();
 			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros,
 						 (double)micros / (double)(1000000000));
+			
+			// TODO: Save model
 			return 0;
 		}
 	}
