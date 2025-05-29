@@ -1,0 +1,9 @@
+builddir/
+checkpoint/
+.cache/
+.DS_Store
+train
+test
+human
+benchmark
+compile_commands.json
