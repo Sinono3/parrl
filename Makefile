@@ -1,10 +1,11 @@
 all: train test benchmark human
 CC=g++
-CFLAGS=-Wall -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml-all torch box2d)
+WARNINGS=-Wall -Wextra -Wconversion
+CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml-all torch box2d)
 LDFLAGS=$(shell pkg-config --libs sfml-all torch box2d)
 
 # DEBUG: macOS flags
-CFLAGS=-Wall -O2 -march=native -std=c++23  $(shell pkg-config --cflags sfml-all) \
+CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23  $(shell pkg-config --cflags sfml-all) \
 	-I/opt/homebrew/include -I/opt/homebrew/opt/box2d/include\
 	-I/opt/homebrew/include/torch/csrc/api/include
 LDFLAGS=$(shell pkg-config --libs sfml-all) \
@@ -31,16 +32,16 @@ builddir/human.o: src/human.cpp
 	mkdir -p builddir
 	$(CC) -c $(CFLAGS) $< -Iinc -o $@
 
-train: builddir/train.o builddir/CarRacing.o builddir/Car.o builddir/util.o
+train: builddir/train.o builddir/util.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-test: builddir/test.o builddir/CarRacing.o builddir/Car.o builddir/util.o
+test: builddir/test.o builddir/util.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
-benchmark: builddir/benchmark.o builddir/CarRacing.o builddir/Car.o builddir/util.o
+benchmark: builddir/benchmark.o builddir/util.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
-human: builddir/human.o builddir/CarRacing.o builddir/Car.o builddir/util.o
+human: builddir/human.o builddir/util.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
 clean: 
