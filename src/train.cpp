@@ -52,8 +52,8 @@ float getAverageEpisodeReward(const std::vector<float> &rewards,
 	return totalReward / (float)totalEpisodeCount;
 }
 
-int main() {
-	torch::manual_seed(42);
+std::tuple<bool, int, long long> train(unsigned long long seed) {
+	torch::manual_seed(seed);
 
 	auto net =
 		torch::nn::Sequential(torch::nn::Linear(4, 128), torch::nn::ReLU(),
@@ -61,7 +61,7 @@ int main() {
 	auto opt =
 		torch::optim::Adam(net->parameters(), torch::optim::AdamOptions(0.1));
 
-	Cartpole env;
+	Cartpole env(seed);
 
 	constexpr int EPOCHS = 1000000;
 	constexpr int STEPS = 1000;
@@ -104,21 +104,44 @@ int main() {
 		opt.step();
 
 		auto avg_reward = getAverageEpisodeReward(rewards, dones);
-		std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
+		// std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
 		// TODO: testing/validation
 
 		if (avg_reward > TARGET_AVG_REWARD) {
 			auto stop = std::chrono::high_resolution_clock::now();
 			auto micros = (stop - start).count();
-			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros,
-						 (double)micros / (double)(1000000000));
-
-			net->eval();
-			testAgent([&](auto obs) {
-				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
-				return chooseAction(net, obs_tensor);
-			});
-			return 0;
+			// std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
+			// net->eval();
+			// testAgent([&](auto obs) {
+			// 	auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
+			// 	return chooseAction(net, obs_tensor);
+			// });
+			return {true, epoch, micros};
 		}
 	}
+	return {false, 0, 0};
+}
+int main() {
+	constexpr unsigned long long SEEDS = 100;
+
+	double totalTime = 0.0;
+
+		for (unsigned long long seed = 0; seed < SEEDS; seed++) {
+
+		auto [success, epoch, micros] = train(seed);
+		double time = (double)micros / (double)(1000000000);
+
+		std::print("seed {}: ", seed);
+		if (success)
+			std::println("finished in {} epochs ({} µs = {} s)", epoch, micros,
+						 time);
+		else
+			std::println("failed...", epoch, micros, time);
+
+		totalTime += time;
+	}
+
+	double averageTime = totalTime / (double)SEEDS;
+	std::println("average time across {} seeds: {}", SEEDS, averageTime);
+	return 0;
 }

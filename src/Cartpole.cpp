@@ -1,8 +1,7 @@
 #include "Cartpole.hpp"
-#include <random>
 
-std::mt19937 rng(42);
-std::uniform_real_distribution initial_state_dist(-0.05, 0.05);
+Cartpole::Cartpole(unsigned long long seed)
+	: rng((unsigned int)seed), initial_state_dist(-0.05f, 0.05f) {}
 
 // Returns initial observation
 CartpoleObs Cartpole::reset() {

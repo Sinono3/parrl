@@ -1,3 +1,4 @@
+#pragma once
 template <typename Obs> struct Step {
 	Obs obs;
 	float reward;

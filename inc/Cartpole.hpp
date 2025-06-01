@@ -2,6 +2,7 @@
 #include "Env.hpp"
 #include <array>
 #include <numbers>
+#include <random>
 
 constexpr float PI = static_cast<float>(std::numbers::pi);
 
@@ -13,6 +14,8 @@ struct CartpoleObs {
 class Cartpole final : public Env<CartpoleObs, CartpoleAction> {
 	std::array<float, 4> state = {};
 	bool already_done = false;
+	std::mt19937 rng;
+	std::uniform_real_distribution<float> initial_state_dist;
 
   public:
 	static constexpr float GRAVITY = 9.8f;
@@ -26,6 +29,7 @@ class Cartpole final : public Env<CartpoleObs, CartpoleAction> {
 	static constexpr float THETA_THRESHOLD_RADIANS = 12.0f * 2.0f * PI / 360.0f;
 	static constexpr float X_THRESHOLD = 2.4f;
 
+	Cartpole(unsigned long long seed = 42);
 	// Returns initial observation
 	CartpoleObs reset() override;
 	Step<CartpoleObs> step(CartpoleAction action) override;
