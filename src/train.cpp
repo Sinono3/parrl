@@ -126,7 +126,7 @@ int main() {
 
 	double totalTime = 0.0;
 
-		for (unsigned long long seed = 0; seed < SEEDS; seed++) {
+	for (unsigned long long seed = 0; seed < SEEDS; seed++) {
 
 		auto [success, epoch, micros] = train(seed);
 		double time = (double)micros / (double)(1000000000);
