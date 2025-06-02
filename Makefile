@@ -1,14 +1,21 @@
 all: train test benchmark human
 CC=g++
-WARNINGS=-Wall -Wextra -Wconversion
-CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml-graphics torch)
-LDFLAGS=$(shell pkg-config --libs sfml-graphics torch)
+WARNINGS=-Wall -Wextra -Wconversion -fsanitize=address
+CFLAGS_COMMON=$(WARNINGS) -O2 -march=native -std=c++23 -g
 
-# DEBUG: macOS flags
-CFLAGS=$(WARNINGS) -O2 -march=native -std=c++23 $(shell pkg-config --cflags sfml-graphics) \
+CFLAGS_LINUX=$(shell pkg-config --cflags sfml-graphics torch)
+LDFLAGS_LINUX=$(shell pkg-config --libs sfml-graphics torch)
+
+CFLAGS_MAC=$(shell pkg-config --cflags sfml-graphics) \
 	-I/opt/homebrew/include -I/opt/homebrew/include/torch/csrc/api/include
-LDFLAGS=$(shell pkg-config --libs sfml-graphics) \
+LDFLAGS_MAC=$(shell pkg-config --libs sfml-graphics) \
 	-L/opt/homebrew/lib/ -lc10 -ltorch -ltorch_cpu
+
+# NOTE: Set depending on platform
+# CFLAGS=$(CFLAGS_COMMON) $(CFLAGS_LINUX)
+# LDFLAGS=$(LDFLAGS_LINUX)
+CFLAGS=$(CFLAGS_COMMON) $(CFLAGS_MAC)
+LDFLAGS=$(LDFLAGS_MAC)
 
 builddir/%.o: src/%.cpp inc/%.hpp
 	mkdir -p builddir
@@ -28,6 +35,9 @@ benchmark: builddir/benchmark.exe.o builddir/Cartpole.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
 human: builddir/human.exe.o builddir/CartpoleRenderer.o builddir/Cartpole.o
+	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
+
+MLPverify: builddir/MLPverify.exe.o builddir/MLP.o
 	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
 
 clean: 
