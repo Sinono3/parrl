@@ -3,6 +3,7 @@
 #include <cmath>
 #include <print>
 #include <random>
+#include <stdexcept>
 #include <string.h>
 
 using namespace std;
@@ -112,32 +113,53 @@ void print_mat(size_t rows, size_t cols, const float *mat) {
 
 void print_vec(size_t n, const float *vec) { print_mat(1, n, vec); }
 
-void sigmoid(size_t n, const float *x, float *y) {
+void sigmoid(size_t n, const float *z, float *a) {
 	for (size_t i = 0; i < n; i++) {
-		y[i] = 1.0f / (1.0f + exp(-x[i]));
+		a[i] = 1.0f / (1.0f + exp(-z[i]));
 	}
 }
 
-void sigmoid_d(size_t n, const float *x, float *y) {
-	sigmoid(n, x, y);
-
+void sigmoid_back(size_t n, const float *z, const float *a, const float *dL_da,
+			   float *dL_dz) {
 	for (size_t i = 0; i < n; i++) {
-		y[i] = y[i] * (1 - y[i]);
+		float a_i = a[i];
+		dL_dz[i] = dL_da[i] * a_i * (1 - a_i);
 	}
 }
 
-void relu(size_t n, const float *x, float *y) {
-	throw std::logic_error("Function not yet implemented");
-}
-void relu_d(size_t n, const float *x, float *y) {
-	throw std::logic_error("Function not yet implemented");
+void relu(size_t n, const float *z, float *a) {
+	for (size_t i = 0; i < n; i++) {
+		a[i] = max(0.0f, z[i]);
+	}
 }
 
-void softmax(size_t n, const float *x, float *y) {
-	throw std::logic_error("Function not yet implemented");
+void relu_back(size_t n, const float *z, const float *a, const float *dL_da,
+			float *dL_dz) {
+	for (size_t i = 0; i < n; i++) {
+		dL_dz[i] = dL_da[i] * (float)(z[i] > 0.0f);
+	}
 }
-void softmax_d(size_t n, const float *x, float *y) {
-	throw std::logic_error("Function not yet implemented");
+
+void softmax(size_t n, const float *z, float *a) {
+	float sumexp = 0.0f;
+	for (size_t i = 0; i < n; i++) {
+		sumexp += exp(z[i]);
+	}
+	float logsumexp = log(sumexp);
+	for (size_t i = 0; i < n; i++) {
+		a[i] = exp(z[i] - logsumexp);
+	}
+}
+void softmax_back(size_t n, const float *z, const float *a, const float *dL_da, float *dL_dz) {
+	throw std::logic_error("not implemented");
+}
+
+void nop(size_t n, const float *z, float *a) {
+	std::copy(z, z + n, a);
+}
+void nop_back(size_t n, const float *z, const float *a, const float *dL_da,
+			   float *dL_dz) {
+	std::copy(dL_da, dL_da + n, dL_dz);
 }
 
 // build your NN model based on the passed in parameters. Hopefully all memory allocation is done here.
@@ -193,22 +215,55 @@ MLP::~MLP() {
 }
 
 static std::mt19937 rng(1);
-static std::uniform_real_distribution<float> uniformDist(-1.0f, 1.0f);
+static std::uniform_real_distribution<float> stdUniformDist(-1.0f, 1.0f);
 
 template <typename T> inline void fillWithUniform(T *a, size_t size) {
 	for (size_t i = 0; i < size; i++)
-		a[i] = uniformDist(rng);
+		a[i] = stdUniformDist(rng);
 }
 
-void MLP::initWeights() {
+void MLP::initUniform() {
 	for (auto &layer : layers) {
 		fillWithUniform(layer.weights, layer.inputSize * layer.outputSize);
-		fillWithUniform(layer.biases, layer.outputSize);
+	}
+}
+
+template <typename T> inline void fillWithXavier(T *a, size_t n, size_t in, size_t out) {
+	float bounds = std::sqrtf(6.0f / (float)(in + out));
+	for (size_t i = 0; i < n; i++)
+		a[i] = bounds * stdUniformDist(rng);
+}
+
+inline void fillWithZeros(float *a, size_t size) {
+	std::fill(a, a + size, 0.0f);
+}
+
+void MLP::initXavier() {
+	for (auto &layer : layers) {
+		auto m = layer.inputSize;
+		auto n = layer.outputSize;
+		fillWithXavier(layer.weights, m * n, m, n);
+		fillWithZeros(layer.biases, n);
+	}
+}
+
+
+void MLP::initHe() {
+	for (auto &layer : layers) {
+		auto m = layer.inputSize;
+		auto n = layer.outputSize;
+
+        float std_dev = std::sqrtf(2.0f / (float)m);
+        std::normal_distribution<float> normal(0.0f, std_dev);
+        
+        for (size_t i = 0; i < m * n; i++)
+            layer.weights[i] = normal(rng);
+            
+        fillWithZeros(layer.biases, n);
 	}
 }
 
 void layerForwardBatch(float *input, MLP::Layer &layer, size_t batchSize) {
-#pragma omp parallel for schedule(static)
 	for (size_t b = 0; b < batchSize; b++) {
 		auto b_input = &input[b * layer.inputSize];
 		auto b_z = &layer.z[b * layer.outputSize];
@@ -243,8 +298,6 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 	auto &lastLayer = this->layers[this->layers.size() - 1];
 
 	// Calculate loss
-	// TODO: Pre-allocate this
-
 	for (size_t b = 0; b < miniBatchSize; b++) {
 		auto offset = b * lastLayer.outputSize;
 		auto b_output = &lastLayer.a[offset];
@@ -262,9 +315,8 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 	auto dL_da = this->dL_da;
 	auto dL_dz = this->dL_dz;
 
-// We must set up dL_da for the last layer (the first in the iteration)
-// because it depends on the loss function
-#pragma omp parallel for schedule(static)
+	// We must set up dL_da for the last layer (the first in the iteration)
+	// because it depends on the loss function
 	for (size_t b = 0; b < miniBatchSize; b++) {
 		auto offset = b * lastLayer.outputSize;
 		auto b_a = &lastLayer.a[offset];
@@ -280,24 +332,19 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 		auto m = curLayer.inputSize;
 		auto n = curLayer.outputSize;
 
-#pragma omp parallel for schedule(static)
 		for (size_t b = 0; b < miniBatchSize; b++) {
 			auto offset = b * n;
 			auto b_dL_dz = &dL_dz[offset];
 			auto b_dL_da = &dL_da[offset];
 			auto b_z = &curLayer.z[offset];
-
-			curLayer.activation.derivative(n, b_z, b_dL_dz);
-			for (size_t i = 0; i < n; i++) {
-				b_dL_dz[i] = b_dL_da[i] * b_dL_dz[i];
-			}
+			auto b_a = &curLayer.a[offset];
+			curLayer.activation.backprop(n, b_z, b_a, b_dL_da, b_dL_dz);
 		}
 
 		// Calculate gradient for the previous layer's output (setup for the next iteration)
 		// (This will be used in the next iteration, except on the last one [thus the if statement])
 		// NOTE: why this works: involves a bit of a mathematical/memory-contiguity hack
 		if (layerIdx > 0) {
-#pragma omp parallel for schedule(static)
 			for (size_t b = 0; b < miniBatchSize; b++) {
 				auto b_dL_dz = &dL_dz[b * n]; // <-- cur layer offset
 				auto b_dL_da = &dL_da[b * m]; // <-- last layer offset
@@ -309,38 +356,19 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 		// If we're on the first layer, check the input instead (there's no i-1 layer)
 		auto prevLayerOutput =
 			(layerIdx > 0) ? this->layers[(size_t)layerIdx - 1].a : X;
-
-		// TODO: #pragma omp parallel for schedule(static)
-		// We cannot modify parameters parallely. What can we do?
-		// critical is too expensive. Atomic operations will likely be slower.
-		// Maybe this part needs to just be serial.
+		// UPDATE WEIGHTS
 		for (size_t b = 0; b < miniBatchSize; b++) {
 			auto b_prevLayerOutput =
 				&prevLayerOutput[b * m]; // <-- b * M, not N
 			auto b_dL_dz = &dL_dz[b * n];
 
-			// Performs outer product and gradient descent
-			// Does what these did combined:
-			// - `vec_outer(m, n, X, dL_dz, dL_dw);`
-			// - `add_mat_mat_scalar(m, n, curLayer.weights, dL_dw, -alpha, curLayer.weights);`
 			for (size_t i = 0; i < m; i++)
 				for (size_t j = 0; j < n; j++)
 					curLayer.weights[i * n + j] -=
 						batchedScale * alpha *
 						(b_prevLayerOutput[i] * b_dL_dz[j]);
 		}
-
-		// The previous if-else clauses are almost identical except for how we index `prevLayerOutput`
-		// We must do this because X is provided as a float**, and our actual implementation uses
-		// explicitly contiguous arrays (float*)
-		// There's some template-trickery that can be done to prevent this code duplication, but
-		// I think it's not necessary.
-
-		// gradient of bias (dL_db) is just gradient of z (dL_dz)
-		// TODO: #pragma omp parallel for schedule(static)
-		// We cannot modify parameters parallely. What can we do?
-		// `omp critical` is too expensive. `omp atomic` operations will likely be slower.
-		// Maybe this part needs to just be serial.
+		// UPDATE BIASES
 		for (size_t b = 0; b < miniBatchSize; b++) {
 			auto b_dL_dz = &dL_dz[b * n];
 			add_vec_vec_scalar(n, curLayer.biases, b_dL_dz,

@@ -15,7 +15,7 @@ void setTestWeights(MLP &model) {
 	memcpy(model.layers[1].biases, bias2, sizeof(float) * 2);
 }
 
-int main() {
+void test1() {
 	float X[] = {1.00f, 2.00f, 0.00f, 1.00f}; // 2 input, 2 numbers each
 	float T[] = {0.25f, 0.75f, 0.50f, 0.25f}; // 2 targets, 2 numbers each
 	float o[4];								  // output
@@ -25,8 +25,8 @@ int main() {
 	std::vector<ActivationFunction> acts = {
 		Sigmoid, Sigmoid}; // an array of function pointers
 	MLP model(3, sizes, acts, 2);
-	model.initWeights();
 	setTestWeights(model);
+	// model.initHe();
 
 	for (auto i = 0; i < 1000; ++i) {
 		model.forward(X, o, 2);
@@ -35,4 +35,9 @@ int main() {
 				  << i << ":" << SSE << "[ " << o[0] << ", " << o[1] << ", "
 				  << o[2] << ", " << o[3] << " ]" << std::flush;
 	}
+}
+
+int main() {
+	// float X[] = {-1.0f, -4.0f, 2.f, 8.0f};
+	// float T[] = {0.25f, 0.75f, 0.50f, 0.25f};
 }

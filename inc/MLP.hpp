@@ -1,23 +1,24 @@
 #pragma once
 #include <vector>
 
-using Func = void (*)(size_t n, const float *input, float *output);
+using Func = void (*)(size_t n, const float *z, float *a);
+using FuncBack = void (*)(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
 
 struct ActivationFunction {
 	Func func;
-	Func derivative;
+	FuncBack backprop;
 };
 
-void sigmoid(size_t n, const float *in, float *out);
-void sigmoid_d(size_t n, const float *in, float *out);
-void relu(size_t n, const float *in, float *out);
-void relu_d(size_t n, const float *in, float *out);
-void softmax(size_t n, const float *in, float *out);
-void softmax_d(size_t n, const float *in, float *out);
+void sigmoid(size_t n, const float *z, float *a);
+void sigmoid_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
+void relu(size_t n, const float *z, float *a);
+void relu_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
+void softmax(size_t n, const float *z, float *a);
+void softmax_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
 
-constexpr ActivationFunction Sigmoid = {sigmoid, sigmoid_d};
-constexpr ActivationFunction ReLU = {relu, relu_d};
-constexpr ActivationFunction Softmax = {softmax, softmax_d};
+constexpr ActivationFunction Sigmoid = {sigmoid, sigmoid_back};
+constexpr ActivationFunction ReLU = {relu, relu_back};
+constexpr ActivationFunction Softmax = {softmax, softmax_back};
 
 struct MLP {
 	struct Layer {
@@ -42,7 +43,9 @@ struct MLP {
 		std::vector<ActivationFunction> aFunctions, size_t maxBatchSize = 1);
 	~MLP();
 
-	void initWeights();
+	void initUniform();
+	void initXavier();
+	void initHe();
 	// Assumes a batched input/output
 	void forward(float *input, float *output, size_t miniBatchSize);
 	// Assumes a batched input/output
