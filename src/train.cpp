@@ -82,7 +82,7 @@ struct Timing {
 	long long total_time = 0;
 };
 
-std::tuple<bool, int, Timing> train(unsigned long long seed) {
+std::tuple<bool, int, Timing> train(unsigned long long seed, bool viz = false) {
 	Timing timing;
 		
 	constexpr size_t ACTIONS = 2;
@@ -91,7 +91,7 @@ std::tuple<bool, int, Timing> train(unsigned long long seed) {
 	// How many parallel simulations will be running
 	constexpr int SIMS = 5;
 	constexpr int STEPS_PER_SIM = STEPS/SIMS;
-	constexpr float TARGET_AVG_REWARD = 600.0f;
+	constexpr float TARGET_AVG_REWARD = 1900.0f;
 
 	std::mt19937 rng((unsigned int)seed);
 	auto mlp = MLP(3, new size_t[]{4, 128, ACTIONS}, {ReLU, NoOp}, STEPS);
@@ -168,26 +168,22 @@ std::tuple<bool, int, Timing> train(unsigned long long seed) {
 		if (avg_reward >= TARGET_AVG_REWARD) {
 			auto stop = std::chrono::high_resolution_clock::now();
 			timing.total_time = (stop - start).count();
-			// std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
-			// testAgent([&](auto obs) {
-			// 	mlp.forward(obs.vec.data(), &logits[0], 0);
-			// 	return chooseAction(rng, &logits[0], ACTIONS);
-			// }, false);
+			if (viz)
+				testAgent([&](auto obs) {
+					mlp.forward(obs.vec.data(), &logits[0], 0);
+					return chooseAction(rng, &logits[0], ACTIONS);
+				}, false);
 			return {true, epoch, timing};
 		}
 	}
 	return {false, 0, timing};
 }
 
-int main() {
-	constexpr unsigned long long SEEDS = 20;
-
+void bench(unsigned long long seeds) {
 	double totalTime = 0.0;
 
-	for (unsigned long long seed = 0; seed < SEEDS; seed++) {
-
+	for (unsigned long long seed = 0; seed < seeds; seed++) {
 		auto [success, epoch, timing] = train(seed);
-		double time = (double)timing.total_time / (double)1e9;
 
 		std::print("seed {}: ", seed);
 		if (success)
@@ -199,10 +195,51 @@ int main() {
 		else
 			std::println("failed...");
 
-		totalTime += time;
+		totalTime += (double)timing.total_time / (double)1e9;
 	}
 
-	double averageTime = totalTime / (double)SEEDS;
-	std::println("average time across {} seeds: {}", SEEDS, averageTime);
-	return 0;
+	double averageTime = totalTime / (double)seeds;
+	std::println("average time across {} seeds: {}", seeds, averageTime);
+}
+
+void once() {
+	unsigned long long seed = 42;
+	auto [success, epoch, timing] = train(seed, true);
+
+	std::print("seed {}: ", seed);
+	if (success)
+		std::println("finished in {} epochs (total = {} s, sim+forward = {}s, backward = {}s)", epoch,
+		             (double)timing.total_time / (double) 1e9,
+		             (double)timing.sim_forward_time / (double) 1e9,
+		             (double)timing.backward_time / (double) 1e9
+		         );
+	else
+		std::println("failed...");
+}
+
+int main(int argc, const char **argv) {
+	std::vector<std::string> args;
+	// Convert to C++ strings
+	for (int i = 0; i < argc; i++) {
+		args.push_back(argv[i]);
+	}
+
+	if ((argc == 2 || argc == 3) && args[1] == "bench") {
+		unsigned long long seeds = 15;
+		if (argc == 3)
+			seeds = std::stoull(args[1]);
+		bench(seeds);
+		return 0;
+	} else if (argc == 2 && args[1] == "once") {
+		once();
+		return 0;
+	} else {
+		std::println("Usage: ./train <operation>\b"
+					 "Operations:\n"
+					 "bench <N>: runs N training runs and returns the average "
+					 "training time\n"
+					 "once: trains the agent once and then visualizes the "
+					 "result graphically\n");
+		return 1;
+	}
 }
