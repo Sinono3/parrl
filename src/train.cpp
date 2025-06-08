@@ -108,7 +108,7 @@ std::tuple<bool, int, Timing> train(unsigned long long seed) {
 	auto start = std::chrono::high_resolution_clock::now();
 	for (int epoch = 1; epoch <= EPOCHS; epoch++) {
 		auto s = std::chrono::high_resolution_clock::now();
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (size_t sim = 0; sim < SIMS; sim++) {
 			size_t epoch_sim_seed = (size_t)(seed<<16) + (size_t)sim;
 			epoch_sim_seed = std::hash<size_t>{}(epoch_sim_seed);
@@ -139,8 +139,6 @@ std::tuple<bool, int, Timing> train(unsigned long long seed) {
 			
 			// Set done=true at the of each `sim`
 			dones[(sim+1)*STEPS_PER_SIM - 1] = true;
-
-			// timing.sim_time += sim_time;
 		}
 		timing.sim_forward_time += (std::chrono::high_resolution_clock::now() - s).count();
 
