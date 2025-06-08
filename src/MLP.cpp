@@ -305,7 +305,7 @@ void MLP::backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float a
 		// (This will be used in the next iteration, except on the last one [thus the if statement])
 		// NOTE: why this works: involves a bit of a mathematical/memory-contiguity hack
 		if (layerIdx > 0) {
-			#pragma omp parallel for
+			#pragma omp parallel for schedule(static)
 			for (size_t b = 0; b < miniBatchSize; b++) {
 				auto b_dL_dz = &dL_dz[b * n]; // <-- cur layer offset
 				auto b_dL_da = &dL_da[b * m]; // <-- last layer offset
@@ -315,23 +315,23 @@ void MLP::backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float a
 
 		// If we're on the first layer, check the input instead (there's no i-1 layer)
 		auto prevLayerOutput = (layerIdx > 0) ? this->layers[(size_t)layerIdx - 1].a : X;
-		// UPDATE WEIGHTS
-		for (size_t b = 0; b < miniBatchSize; b++) {
-			auto b_prevLayerOutput =
-				&prevLayerOutput[b * m]; // <-- b * M, not N
-			auto b_dL_dz = &dL_dz[b * n];
+		#pragma omp parallel for schedule(static) collapse(2)
+        for (size_t i = 0; i < m; i++) {
+			for (size_t j = 0; j < n; j++) {
+				float grad_acc = 0.0f;
+				for (size_t b = 0; b < miniBatchSize; b++) {
+					grad_acc += prevLayerOutput[b * m + i] * dL_dz[b * n + j];
+				}
+				curLayer.weights[i * n + j] += parameterUpdateScale * grad_acc;
 
-			for (size_t i = 0; i < m; i++)
-				for (size_t j = 0; j < n; j++)
-					curLayer.weights[i * n + j] +=
-						parameterUpdateScale *
-						(b_prevLayerOutput[i] * b_dL_dz[j]);
-		}
-		// UPDATE BIASES
-		for (size_t b = 0; b < miniBatchSize; b++) {
-			auto b_dL_dz = &dL_dz[b * n];
-			add_vec_vec_scalar(n, curLayer.biases, b_dL_dz,
-							   parameterUpdateScale, curLayer.biases);
+				if (i == 0) {
+					grad_acc = 0.0f;
+					for (size_t b = 0; b < miniBatchSize; b++) {
+						grad_acc += dL_dz[b * n + j];
+					}
+					curLayer.biases[j] += parameterUpdateScale * grad_acc;
+				}
+			}
 		}
 	}
 }
