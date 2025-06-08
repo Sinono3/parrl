@@ -234,7 +234,7 @@ int main(int argc, const char **argv) {
 		once();
 		return 0;
 	} else {
-		std::println("Usage: ./train <operation>\b"
+		std::println("Usage: ./train <operation>\n"
 					 "Operations:\n"
 					 "bench <N>: runs N training runs and returns the average "
 					 "training time\n"
