@@ -6,7 +6,7 @@ template <typename F>
 concept ActionChooser = std::invocable<F, CartpoleObs>;
 
 // Spawns a window and runs the agent with the specified policy until the window is closed
-template <ActionChooser F> void testAgent(F policy) {
+template <ActionChooser F> void testAgent(F policy, bool print = true) {
 	// create the window
 	sf::RenderWindow window(sf::VideoMode({600, 400}), "parrl",
 							sf::Style::Default, sf::State::Windowed,
@@ -33,8 +33,9 @@ template <ActionChooser F> void testAgent(F policy) {
 		auto step = env.step((CartpoleAction)action);
 		obs = step.obs;
 
-		std::println("act={} -> obs={}, reward={}, done={}", (int)action,
-					 step.obs.vec, step.reward, step.done);
+		if (print)
+			std::println("act={} -> obs={}, reward={}, done={}", (int)action,
+						 step.obs.vec, step.reward, step.done);
 
 		if (step.done)
 			env.reset();

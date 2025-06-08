@@ -50,7 +50,7 @@ struct MLP {
 	void initXavier();
 	void initHe();
 	// Assumes a batched input/output
-	void forward(float *input, float *output, size_t b, size_t miniBatchSize);
+	void forward(float *input, float *output, size_t b);
 	// Assumes a batched input/output
 	// Returns the loss
 	void backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float alpha = 0.001f);

@@ -256,14 +256,16 @@ void MLP::initHe() {
         float std_dev = std::sqrtf(2.0f / (float)m);
         std::normal_distribution<float> normal(0.0f, std_dev);
         
-        for (size_t i = 0; i < m * n; i++)
+        for (size_t i = 0; i < m * n; i++) {
             layer.weights[i] = normal(rng);
+            layer.weights[i] = std::clamp(layer.weights[i], -5.0f, 5.0f);
+        }
             
         fillWithZeros(layer.biases, n);
 	}
 }
 
-void layerForwardBatch(float *input, MLP::Layer &layer, size_t b, size_t batchSize) {
+void layerForwardBatch(float *input, MLP::Layer &layer, size_t b) {
 	auto b_input = &input[b * layer.inputSize];
 	auto b_z = &layer.z[b * layer.outputSize];
 	auto b_a = &layer.a[b * layer.outputSize];
@@ -275,18 +277,18 @@ void layerForwardBatch(float *input, MLP::Layer &layer, size_t b, size_t batchSi
 }
 
 // implement the feed-forward process to do inferencing.
-void MLP::forward(float *input, float *output, size_t b, size_t miniBatchSize) {
-	layerForwardBatch(input, this->layers[0], b, miniBatchSize);
+void MLP::forward(float *input, float *output, size_t b) {
+	layerForwardBatch(input, this->layers[0], b);
 
 	for (size_t i = 1; i < this->layers.size(); i++) {
-		layerForwardBatch(this->layers[i - 1].a, this->layers[i], b, miniBatchSize);
+		layerForwardBatch(this->layers[i - 1].a, this->layers[i], b);
 	}
 
 	// Copy layer's `a` to output
 	size_t lastIdx = this->layers.size() - 1;
 	auto &lastLayer = this->layers[lastIdx];
-	std::copy(&lastLayer.a[0],
-			  &lastLayer.a[lastLayer.outputSize * miniBatchSize], output);
+	std::copy(&lastLayer.a[b * lastLayer.outputSize],
+			  &lastLayer.a[(b + 1) * lastLayer.outputSize], output);
 }
 
 // Backpropagation and optimization all-in-one.
