@@ -82,7 +82,7 @@ struct Timing {
 	long long total_time = 0;
 };
 
-std::tuple<bool, int, Timing> train(unsigned long long seed, bool viz = false) {
+std::tuple<bool, int, Timing> train(unsigned long long seed, float target_avg_reward, bool viz = false) {
 	Timing timing;
 		
 	constexpr size_t ACTIONS = 2;
@@ -91,7 +91,6 @@ std::tuple<bool, int, Timing> train(unsigned long long seed, bool viz = false) {
 	// How many parallel simulations will be running
 	constexpr int SIMS = 5;
 	constexpr int STEPS_PER_SIM = STEPS/SIMS;
-	constexpr float TARGET_AVG_REWARD = 1900.0f;
 
 	std::mt19937 rng((unsigned int)seed);
 	auto mlp = MLP(3, new size_t[]{4, 128, ACTIONS}, {ReLU, NoOp}, STEPS);
@@ -165,7 +164,7 @@ std::tuple<bool, int, Timing> train(unsigned long long seed, bool viz = false) {
 		if ((epoch % 50) == 0) {
 			std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
 		}
-		if (avg_reward >= TARGET_AVG_REWARD) {
+		if (avg_reward >= target_avg_reward) {
 			auto stop = std::chrono::high_resolution_clock::now();
 			timing.total_time = (stop - start).count();
 			if (viz)
@@ -179,11 +178,11 @@ std::tuple<bool, int, Timing> train(unsigned long long seed, bool viz = false) {
 	return {false, 0, timing};
 }
 
-void bench(unsigned long long seeds) {
+void bench(unsigned long long seeds, float target_avg_reward) {
 	double totalTime = 0.0;
 
 	for (unsigned long long seed = 0; seed < seeds; seed++) {
-		auto [success, epoch, timing] = train(seed);
+		auto [success, epoch, timing] = train(seed, target_avg_reward);
 
 		std::print("seed {}: ", seed);
 		if (success)
@@ -202,9 +201,9 @@ void bench(unsigned long long seeds) {
 	std::println("average time across {} seeds: {}", seeds, averageTime);
 }
 
-void once() {
+void once(float target_avg_reward) {
 	unsigned long long seed = 42;
-	auto [success, epoch, timing] = train(seed, true);
+	auto [success, epoch, timing] = train(seed, target_avg_reward, true);
 
 	std::print("seed {}: ", seed);
 	if (success)
@@ -224,21 +223,23 @@ int main(int argc, const char **argv) {
 		args.push_back(argv[i]);
 	}
 
-	if ((argc == 2 || argc == 3) && args[1] == "bench") {
+	if ((argc > 1) && args[1] == "bench") {
 		unsigned long long seeds = 15;
-		if (argc == 3)
-			seeds = std::stoull(args[2]);
-		bench(seeds);
+		float target_avg_reward = 1900.0f;
+		if (argc > 2) seeds = std::stoull(args[2]);
+		if (argc > 3) target_avg_reward = (float)std::stoi(args[3]);
+		bench(seeds, target_avg_reward);
 		return 0;
-	} else if (argc == 2 && args[1] == "once") {
-		once();
+	} else if ((argc > 1) && args[1] == "once") {
+		float target_avg_reward = 1900.0f;
+		if (argc > 2) target_avg_reward = (float)std::stoi(args[2]);
+		once(target_avg_reward);
 		return 0;
 	} else {
 		std::println("Usage: ./train <operation>\n"
 					 "Operations:\n"
-					 "bench <N>: runs N training runs and returns the average "
-					 "training time\n"
-					 "once: trains the agent once and then visualizes the "
+					 "bench <N> <target_avg_reward>: runs N training runs reaching up to the target and returns the average training time\n"
+					 "once <target_avg_reward>: trains the agent once and then visualizes the "
 					 "result graphically\n");
 		return 1;
 	}
