@@ -1,0 +1,207 @@
+Batch 50 over. Avg reward: 87.7193.
+Batch 100 over. Avg reward: 163.93443.
+Batch 150 over. Avg reward: 227.27272.
+Batch 200 over. Avg reward: 250.
+Batch 250 over. Avg reward: 384.6154.
+Batch 300 over. Avg reward: 370.37036.
+Batch 350 over. Avg reward: 384.6154.
+Batch 400 over. Avg reward: 370.37036.
+seed 0: finished in 429 epochs (total = 2.768927625 s, sim+forward = 0.875290844s, backward = 1.865336286s)
+Batch 50 over. Avg reward: 85.470085.
+Batch 100 over. Avg reward: 161.29033.
+Batch 150 over. Avg reward: 222.22223.
+Batch 200 over. Avg reward: 277.77777.
+Batch 250 over. Avg reward: 277.77777.
+Batch 300 over. Avg reward: 312.5.
+Batch 350 over. Avg reward: 357.14285.
+Batch 400 over. Avg reward: 434.78262.
+seed 1: finished in 439 epochs (total = 2.830774791 s, sim+forward = 0.893988137s, backward = 1.908293508s)
+Batch 50 over. Avg reward: 62.89308.
+Batch 100 over. Avg reward: 102.04082.
+Batch 150 over. Avg reward: 140.84508.
+Batch 200 over. Avg reward: 222.22223.
+Batch 250 over. Avg reward: 263.1579.
+Batch 300 over. Avg reward: 344.82758.
+Batch 350 over. Avg reward: 454.54544.
+Batch 400 over. Avg reward: 384.6154.
+seed 2: finished in 447 epochs (total = 2.880445084 s, sim+forward = 0.908712463s, backward = 1.943329419s)
+Batch 50 over. Avg reward: 74.62687.
+Batch 100 over. Avg reward: 104.166664.
+Batch 150 over. Avg reward: 140.84508.
+Batch 200 over. Avg reward: 166.66667.
+Batch 250 over. Avg reward: 175.4386.
+Batch 300 over. Avg reward: 222.22223.
+Batch 350 over. Avg reward: 263.1579.
+Batch 400 over. Avg reward: 263.1579.
+Batch 450 over. Avg reward: 303.0303.
+Batch 500 over. Avg reward: 294.11765.
+Batch 550 over. Avg reward: 344.82758.
+Batch 600 over. Avg reward: 333.33334.
+Batch 650 over. Avg reward: 416.66666.
+Batch 700 over. Avg reward: 400.
+Batch 750 over. Avg reward: 434.78262.
+Batch 800 over. Avg reward: 454.54544.
+Batch 850 over. Avg reward: 476.1905.
+seed 3: finished in 856 epochs (total = 5.530410959 s, sim+forward = 1.748081287s, backward = 3.726755399s)
+Batch 50 over. Avg reward: 80.645164.
+Batch 100 over. Avg reward: 192.3077.
+Batch 150 over. Avg reward: 232.55814.
+Batch 200 over. Avg reward: 277.77777.
+Batch 250 over. Avg reward: 400.
+Batch 300 over. Avg reward: 526.3158.
+seed 4: finished in 338 epochs (total = 2.177390875 s, sim+forward = 0.687358747s, backward = 1.468397711s)
+Batch 50 over. Avg reward: 80.645164.
+Batch 100 over. Avg reward: 123.45679.
+Batch 150 over. Avg reward: 178.57143.
+Batch 200 over. Avg reward: 227.27272.
+Batch 250 over. Avg reward: 384.6154.
+Batch 300 over. Avg reward: 434.78262.
+Batch 350 over. Avg reward: 384.6154.
+Batch 400 over. Avg reward: 476.1905.
+seed 5: finished in 406 epochs (total = 2.617442083 s, sim+forward = 0.826538126s, backward = 1.764558278s)
+Batch 50 over. Avg reward: 81.30081.
+Batch 100 over. Avg reward: 120.481926.
+Batch 150 over. Avg reward: 181.81818.
+Batch 200 over. Avg reward: 217.39131.
+Batch 250 over. Avg reward: 238.09525.
+Batch 300 over. Avg reward: 263.1579.
+Batch 350 over. Avg reward: 357.14285.
+Batch 400 over. Avg reward: 303.0303.
+Batch 450 over. Avg reward: 322.58066.
+Batch 500 over. Avg reward: 370.37036.
+Batch 550 over. Avg reward: 400.
+Batch 600 over. Avg reward: 357.14285.
+Batch 650 over. Avg reward: 500.
+Batch 700 over. Avg reward: 416.66666.
+seed 6: finished in 748 epochs (total = 4.862122583 s, sim+forward = 1.544498284s, backward = 3.268821116s)
+Batch 50 over. Avg reward: 75.757576.
+Batch 100 over. Avg reward: 142.85715.
+Batch 150 over. Avg reward: 212.76596.
+Batch 200 over. Avg reward: 277.77777.
+Batch 250 over. Avg reward: 303.0303.
+Batch 300 over. Avg reward: 333.33334.
+Batch 350 over. Avg reward: 434.78262.
+Batch 400 over. Avg reward: 384.6154.
+seed 7: finished in 407 epochs (total = 2.681684541 s, sim+forward = 0.847184953s, backward = 1.806691707s)
+Batch 50 over. Avg reward: 78.74016.
+Batch 100 over. Avg reward: 172.41379.
+Batch 150 over. Avg reward: 208.33333.
+Batch 200 over. Avg reward: 250.
+Batch 250 over. Avg reward: 322.58066.
+Batch 300 over. Avg reward: 344.82758.
+Batch 350 over. Avg reward: 416.66666.
+Batch 400 over. Avg reward: 476.1905.
+seed 8: finished in 416 epochs (total = 2.697725833 s, sim+forward = 0.849961711s, backward = 1.820808413s)
+Batch 50 over. Avg reward: 156.25.
+Batch 100 over. Avg reward: 208.33333.
+Batch 150 over. Avg reward: 263.1579.
+Batch 200 over. Avg reward: 270.27026.
+Batch 250 over. Avg reward: 322.58066.
+Batch 300 over. Avg reward: 312.5.
+Batch 350 over. Avg reward: 400.
+Batch 400 over. Avg reward: 400.
+Batch 450 over. Avg reward: 434.78262.
+Batch 500 over. Avg reward: 434.78262.
+seed 9: finished in 507 epochs (total = 3.276846292 s, sim+forward = 1.03305865s, backward = 2.210290895s)
+Batch 50 over. Avg reward: 117.64706.
+Batch 100 over. Avg reward: 188.67924.
+Batch 150 over. Avg reward: 232.55814.
+Batch 200 over. Avg reward: 277.77777.
+Batch 250 over. Avg reward: 277.77777.
+Batch 300 over. Avg reward: 263.1579.
+Batch 350 over. Avg reward: 384.6154.
+Batch 400 over. Avg reward: 454.54544.
+seed 10: finished in 444 epochs (total = 2.87756675 s, sim+forward = 0.907377092s, backward = 1.941066838s)
+Batch 50 over. Avg reward: 88.495575.
+Batch 100 over. Avg reward: 151.51515.
+Batch 150 over. Avg reward: 196.07843.
+Batch 200 over. Avg reward: 217.39131.
+Batch 250 over. Avg reward: 312.5.
+Batch 300 over. Avg reward: 370.37036.
+Batch 350 over. Avg reward: 476.1905.
+Batch 400 over. Avg reward: 416.66666.
+Batch 450 over. Avg reward: 416.66666.
+seed 11: finished in 459 epochs (total = 2.977839791 s, sim+forward = 0.937532932s, backward = 2.010517534s)
+Batch 50 over. Avg reward: 84.033615.
+Batch 100 over. Avg reward: 163.93443.
+Batch 150 over. Avg reward: 222.22223.
+Batch 200 over. Avg reward: 243.90244.
+Batch 250 over. Avg reward: 270.27026.
+Batch 300 over. Avg reward: 384.6154.
+Batch 350 over. Avg reward: 434.78262.
+seed 12: finished in 387 epochs (total = 2.5127335 s, sim+forward = 0.78960788s, backward = 1.697879244s)
+Batch 50 over. Avg reward: 74.62687.
+Batch 100 over. Avg reward: 147.05882.
+Batch 150 over. Avg reward: 192.3077.
+Batch 200 over. Avg reward: 285.7143.
+Batch 250 over. Avg reward: 384.6154.
+Batch 300 over. Avg reward: 434.78262.
+seed 13: finished in 314 epochs (total = 2.040760083 s, sim+forward = 0.642027329s, backward = 1.378399581s)
+Batch 50 over. Avg reward: 123.45679.
+Batch 100 over. Avg reward: 200.
+Batch 150 over. Avg reward: 294.11765.
+Batch 200 over. Avg reward: 312.5.
+Batch 250 over. Avg reward: 434.78262.
+Batch 300 over. Avg reward: 555.55554.
+seed 14: finished in 308 epochs (total = 1.990104958 s, sim+forward = 0.627336004s, backward = 1.342815366s)
+Batch 50 over. Avg reward: 62.89308.
+Batch 100 over. Avg reward: 133.33333.
+Batch 150 over. Avg reward: 178.57143.
+Batch 200 over. Avg reward: 243.90244.
+Batch 250 over. Avg reward: 232.55814.
+Batch 300 over. Avg reward: 322.58066.
+Batch 350 over. Avg reward: 333.33334.
+Batch 400 over. Avg reward: 322.58066.
+Batch 450 over. Avg reward: 344.82758.
+Batch 500 over. Avg reward: 400.
+Batch 550 over. Avg reward: 400.
+seed 15: finished in 561 epochs (total = 3.689784542 s, sim+forward = 1.158881382s, backward = 2.494302965s)
+Batch 50 over. Avg reward: 60.60606.
+Batch 100 over. Avg reward: 119.04762.
+Batch 150 over. Avg reward: 178.57143.
+Batch 200 over. Avg reward: 232.55814.
+Batch 250 over. Avg reward: 270.27026.
+Batch 300 over. Avg reward: 303.0303.
+Batch 350 over. Avg reward: 357.14285.
+Batch 400 over. Avg reward: 400.
+Batch 450 over. Avg reward: 416.66666.
+Batch 500 over. Avg reward: 500.
+seed 16: finished in 522 epochs (total = 3.393854833 s, sim+forward = 1.062931805s, backward = 2.297305533s)
+Batch 50 over. Avg reward: 59.52381.
+Batch 100 over. Avg reward: 74.62687.
+Batch 150 over. Avg reward: 123.45679.
+Batch 200 over. Avg reward: 181.81818.
+Batch 250 over. Avg reward: 181.81818.
+Batch 300 over. Avg reward: 227.27272.
+Batch 350 over. Avg reward: 294.11765.
+Batch 400 over. Avg reward: 303.0303.
+Batch 450 over. Avg reward: 454.54544.
+Batch 500 over. Avg reward: 400.
+seed 17: finished in 524 epochs (total = 3.445110833 s, sim+forward = 1.088699468s, backward = 2.322812218s)
+Batch 50 over. Avg reward: 57.803467.
+Batch 100 over. Avg reward: 70.92199.
+Batch 150 over. Avg reward: 91.74312.
+Batch 200 over. Avg reward: 181.81818.
+Batch 250 over. Avg reward: 256.41025.
+Batch 300 over. Avg reward: 277.77777.
+Batch 350 over. Avg reward: 277.77777.
+Batch 400 over. Avg reward: 416.66666.
+Batch 450 over. Avg reward: 454.54544.
+seed 18: finished in 467 epochs (total = 3.04864125 s, sim+forward = 0.951719001s, backward = 2.06732158s)
+Batch 50 over. Avg reward: 81.30081.
+Batch 100 over. Avg reward: 140.84508.
+Batch 150 over. Avg reward: 169.49153.
+Batch 200 over. Avg reward: 212.76596.
+Batch 250 over. Avg reward: 243.90244.
+Batch 300 over. Avg reward: 263.1579.
+Batch 350 over. Avg reward: 277.77777.
+Batch 400 over. Avg reward: 303.0303.
+Batch 450 over. Avg reward: 322.58066.
+Batch 500 over. Avg reward: 357.14285.
+Batch 550 over. Avg reward: 434.78262.
+Batch 600 over. Avg reward: 384.6154.
+Batch 650 over. Avg reward: 434.78262.
+Batch 700 over. Avg reward: 454.54544.
+Batch 750 over. Avg reward: 416.66666.
+seed 19: finished in 774 epochs (total = 5.059855917 s, sim+forward = 1.58189362s, backward = 3.4271069s)
+average time across 20 seeds: 3.1680011561500003
