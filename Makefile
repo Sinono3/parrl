@@ -1,7 +1,7 @@
-all: train train_new test benchmark human
-CC=g++
+all: train test benchmark human
+CC=clang++
 WARNINGS=-Wall -Wextra -Wconversion
-CFLAGS_COMMON=$(WARNINGS) -O2 -std=c++23 -g
+CFLAGS_COMMON=$(WARNINGS) -O2 -std=c++23 -g -fopenmp 
 
 CFLAGS_LINUX=$(shell pkg-config --cflags sfml-graphics torch)
 LDFLAGS_LINUX=$(shell pkg-config --libs sfml-graphics torch)
@@ -29,16 +29,16 @@ train: builddir/train.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o  bui
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 test: builddir/test.exe.o builddir/CartpoleRenderer.o builddir/Cartpole.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 benchmark: builddir/benchmark.exe.o builddir/Cartpole.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 human: builddir/human.exe.o builddir/CartpoleRenderer.o builddir/Cartpole.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 MLPverify: builddir/MLPverify.exe.o builddir/MLP.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean: 
 	rm -R builddir/

@@ -2,6 +2,7 @@
 #include <random>
 #include "Cartpole.hpp"
 #include "test.hpp"
+#include <print>
 
 static std::uniform_real_distribution<float> uniform01(0.0f, 1.0f);
 
@@ -77,8 +78,8 @@ float getAverageEpisodeReward(size_t stepcount,
 std::tuple<bool, int, long long> train(unsigned long long seed) {
 	constexpr size_t ACTIONS = 2;
 	constexpr int EPOCHS = 10000;
-	constexpr int STEPS = 1000;
-	constexpr float TARGET_AVG_REWARD = 900.0f;
+	constexpr int STEPS = 3000;
+	constexpr float TARGET_AVG_REWARD = 2000.0f;
 
 	std::mt19937 rng((unsigned int)seed);
 	auto mlp = MLP(3, new size_t[]{4, 128, ACTIONS}, {ReLU, NoOp}, STEPS);
@@ -97,6 +98,7 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 	for (int epoch = 1; epoch <= EPOCHS; epoch++) {
 		// Experience acquisition
 		auto obs = env.reset();
+		// #pragma omp parallel for
 		for (size_t step_idx = 0; step_idx < STEPS; step_idx++) {
 			observations[step_idx * 4 + 0] = obs.vec[0];
 			observations[step_idx * 4 + 1] = obs.vec[1];
