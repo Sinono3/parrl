@@ -25,10 +25,7 @@ builddir/%.exe.o: src/%.cpp
 	mkdir -p builddir
 	$(CC) -c $(CFLAGS) $< -Iinc -o $@
 
-train: builddir/train.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-
-train_new: builddir/train_new.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o  builddir/MLP.o
+train: builddir/train.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o  builddir/MLP.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 test: builddir/test.exe.o builddir/CartpoleRenderer.o builddir/Cartpole.o
