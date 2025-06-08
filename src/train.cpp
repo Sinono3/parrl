@@ -104,18 +104,18 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 		opt.step();
 
 		auto avg_reward = getAverageEpisodeReward(rewards, dones);
-		// std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
+		std::println("Batch {} over. Avg reward: {}.", epoch, avg_reward);
 		// TODO: testing/validation
 
 		if (avg_reward > TARGET_AVG_REWARD) {
 			auto stop = std::chrono::high_resolution_clock::now();
 			auto micros = (stop - start).count();
-			// std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
-			// net->eval();
-			// testAgent([&](auto obs) {
-			// 	auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
-			// 	return chooseAction(net, obs_tensor);
-			// });
+			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
+			net->eval();
+			testAgent([&](auto obs) {
+				auto obs_tensor = torch::tensor(at::ArrayRef<float>(obs.vec));
+				return chooseAction(net, obs_tensor);
+			});
 			return {true, epoch, micros};
 		}
 	}

@@ -263,26 +263,23 @@ void MLP::initHe() {
 	}
 }
 
-void layerForwardBatch(float *input, MLP::Layer &layer, size_t batchSize) {
-	for (size_t b = 0; b < batchSize; b++) {
-		auto b_input = &input[b * layer.inputSize];
-		auto b_z = &layer.z[b * layer.outputSize];
-		auto b_a = &layer.a[b * layer.outputSize];
+void layerForwardBatch(float *input, MLP::Layer &layer, size_t b, size_t batchSize) {
+	auto b_input = &input[b * layer.inputSize];
+	auto b_z = &layer.z[b * layer.outputSize];
+	auto b_a = &layer.a[b * layer.outputSize];
 
-		mul_vec_mat(layer.inputSize, layer.outputSize, b_input, layer.weights,
-					b_z);
-		add_vec_vec(layer.outputSize, b_z, layer.biases, b_z);
-		layer.activation.func(layer.outputSize, b_z, b_a);
-	}
+	mul_vec_mat(layer.inputSize, layer.outputSize, b_input, layer.weights,
+				b_z);
+	add_vec_vec(layer.outputSize, b_z, layer.biases, b_z);
+	layer.activation.func(layer.outputSize, b_z, b_a);
 }
 
 // implement the feed-forward process to do inferencing.
-void MLP::forward(float *input, float *output, size_t miniBatchSize) {
-	layerForwardBatch(input, this->layers[0], miniBatchSize);
+void MLP::forward(float *input, float *output, size_t b, size_t miniBatchSize) {
+	layerForwardBatch(input, this->layers[0], b, miniBatchSize);
 
 	for (size_t i = 1; i < this->layers.size(); i++) {
-		layerForwardBatch(this->layers[i - 1].a, this->layers[i],
-						  miniBatchSize);
+		layerForwardBatch(this->layers[i - 1].a, this->layers[i], b, miniBatchSize);
 	}
 
 	// Copy layer's `a` to output
@@ -292,53 +289,30 @@ void MLP::forward(float *input, float *output, size_t miniBatchSize) {
 			  &lastLayer.a[lastLayer.outputSize * miniBatchSize], output);
 }
 
-// TODO: implement the mini-batched back-propagate process to train your NN. With OpenMP!
-float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
+// Backpropagation and optimization all-in-one.
+// Need to provide the loss.
+void MLP::backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float alpha) {
 	auto batchedScale = 1.0f / (float)miniBatchSize;
-	auto &lastLayer = this->layers[this->layers.size() - 1];
-
-	// Calculate loss
-	for (size_t b = 0; b < miniBatchSize; b++) {
-		auto offset = b * lastLayer.outputSize;
-		auto b_output = &lastLayer.a[offset];
-		auto b_T = &T[offset];
-		auto &b_SSE = SSE[b];
-		b_SSE = 0.0f;
-
-		for (size_t i = 0; i < lastLayer.outputSize; i++) {
-			auto diff = b_output[i] - b_T[i];
-			b_SSE += 0.5f * (diff * diff);
-		}
-	}
-
-	// Max neurons per layer
-	auto dL_da = this->dL_da;
+	auto parameterUpdateScale = -batchedScale * alpha;
 	auto dL_dz = this->dL_dz;
 
-	// We must set up dL_da for the last layer (the first in the iteration)
-	// because it depends on the loss function
-	for (size_t b = 0; b < miniBatchSize; b++) {
-		auto offset = b * lastLayer.outputSize;
-		auto b_a = &lastLayer.a[offset];
-		auto b_t = &T[offset];
-		auto b_dL_da = &dL_da[offset];
-		sub_vec_vec(lastLayer.outputSize, b_a, b_t, b_dL_da);
-	}
-
-	for (int layerIdx = (int)(this->layers.size() - 1); layerIdx >= 0;
-		 layerIdx--) {
+	// Max neurons per layer
+	auto lastLayerIdx =(int)(this->layers.size() - 1);
+	for (int layerIdx = lastLayerIdx; layerIdx >= 0; layerIdx--) {
 		auto &curLayer = this->layers[(size_t)layerIdx];
-
 		auto m = curLayer.inputSize;
 		auto n = curLayer.outputSize;
 
-		for (size_t b = 0; b < miniBatchSize; b++) {
-			auto offset = b * n;
-			auto b_dL_dz = &dL_dz[offset];
-			auto b_dL_da = &dL_da[offset];
-			auto b_z = &curLayer.z[offset];
-			auto b_a = &curLayer.a[offset];
-			curLayer.activation.backprop(n, b_z, b_a, b_dL_da, b_dL_dz);
+		{		
+			auto dL_da = (layerIdx == lastLayerIdx) ? dL_dOUT : this->dL_da;
+			for (size_t b = 0; b < miniBatchSize; b++) {
+				auto offset = b * n;
+				auto b_dL_dz = &dL_dz[offset];
+				auto b_dL_da = &dL_da[offset];
+				auto b_z = &curLayer.z[offset];
+				auto b_a = &curLayer.a[offset];
+				curLayer.activation.backprop(n, b_z, b_a, b_dL_da, b_dL_dz);
+			}
 		}
 
 		// Calculate gradient for the previous layer's output (setup for the next iteration)
@@ -348,7 +322,6 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 			for (size_t b = 0; b < miniBatchSize; b++) {
 				auto b_dL_dz = &dL_dz[b * n]; // <-- cur layer offset
 				auto b_dL_da = &dL_da[b * m]; // <-- last layer offset
-
 				mul_mat_vec(m, n, curLayer.weights, b_dL_dz, b_dL_da);
 			}
 		}
@@ -364,22 +337,15 @@ float MLP::backprop(float *T, float *X, size_t miniBatchSize, float alpha) {
 
 			for (size_t i = 0; i < m; i++)
 				for (size_t j = 0; j < n; j++)
-					curLayer.weights[i * n + j] -=
-						batchedScale * alpha *
+					curLayer.weights[i * n + j] +=
+						parameterUpdateScale *
 						(b_prevLayerOutput[i] * b_dL_dz[j]);
 		}
 		// UPDATE BIASES
 		for (size_t b = 0; b < miniBatchSize; b++) {
 			auto b_dL_dz = &dL_dz[b * n];
 			add_vec_vec_scalar(n, curLayer.biases, b_dL_dz,
-							   batchedScale * -alpha, curLayer.biases);
+							   parameterUpdateScale, curLayer.biases);
 		}
 	}
-
-	// Calculate total SSE
-	auto total_SSE = 0.0f;
-	for (size_t b = 0; b < miniBatchSize; b++) {
-		total_SSE += SSE[b];
-	}
-	return total_SSE;
 }

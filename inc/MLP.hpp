@@ -15,10 +15,13 @@ void relu(size_t n, const float *z, float *a);
 void relu_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
 void softmax(size_t n, const float *z, float *a);
 void softmax_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
+void nop(size_t n, const float *z, float *a);
+void nop_back(size_t n, const float *z, const float *a, const float *dL_da, float* dL_dz);
 
 constexpr ActivationFunction Sigmoid = {sigmoid, sigmoid_back};
 constexpr ActivationFunction ReLU = {relu, relu_back};
 constexpr ActivationFunction Softmax = {softmax, softmax_back};
+constexpr ActivationFunction NoOp = {nop, nop_back};
 
 struct MLP {
 	struct Layer {
@@ -47,8 +50,8 @@ struct MLP {
 	void initXavier();
 	void initHe();
 	// Assumes a batched input/output
-	void forward(float *input, float *output, size_t miniBatchSize);
+	void forward(float *input, float *output, size_t b, size_t miniBatchSize);
 	// Assumes a batched input/output
 	// Returns the loss
-	float backprop(float *target, float *input, size_t miniBatchSize, float learningRate = 0.001f);
+	void backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float alpha = 0.001f);
 };

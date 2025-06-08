@@ -1,7 +1,7 @@
-all: train test benchmark human
+all: train train_new test benchmark human
 CC=g++
-WARNINGS=-Wall -Wextra -Wconversion -fsanitize=address
-CFLAGS_COMMON=$(WARNINGS) -O2 -march=native -std=c++23 -g
+WARNINGS=-Wall -Wextra -Wconversion
+CFLAGS_COMMON=$(WARNINGS) -O2 -std=c++23 -g
 
 CFLAGS_LINUX=$(shell pkg-config --cflags sfml-graphics torch)
 LDFLAGS_LINUX=$(shell pkg-config --libs sfml-graphics torch)
@@ -25,7 +25,10 @@ builddir/%.exe.o: src/%.cpp
 	mkdir -p builddir
 	$(CC) -c $(CFLAGS) $< -Iinc -o $@
 
-train: builddir/train.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o 
+train: builddir/train.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+train_new: builddir/train_new.exe.o builddir/Cartpole.o builddir/CartpoleRenderer.o  builddir/MLP.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 test: builddir/test.exe.o builddir/CartpoleRenderer.o builddir/Cartpole.o
