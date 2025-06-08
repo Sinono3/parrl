@@ -46,6 +46,7 @@ Reduce average convergence time to the barest minimum possible with parallelizat
 - [x] Reinforcement learning implementation with REINFORCE
   - The agent converges (and quickly)
 - [ ] Implement neural network from scratch (CPU)
+  - [ ] Implement Adam optimizer
 - [ ] Implement parallel batched episode generation (vectorization)
   - e.g. instead of simulating 10000 steps serially, have 10 cores running 1000 steps
 - [ ] Implement a way to measure improvement in training speed by benchmarking average convergence time with lots of different random seeds.

@@ -1,4 +1,5 @@
 #include "MLP.hpp"
+#include <chrono>
 #include <random>
 #include "Cartpole.hpp"
 #include "test.hpp"
@@ -75,16 +76,26 @@ float getAverageEpisodeReward(size_t stepcount,
 	return totalReward / (float)totalEpisodeCount;
 }
 
-std::tuple<bool, int, long long> train(unsigned long long seed) {
+struct Timing {
+	long long sim_forward_time = 0;
+	long long backward_time = 0;
+	long long total_time = 0;
+};
+
+std::tuple<bool, int, Timing> train(unsigned long long seed) {
+	Timing timing;
+		
 	constexpr size_t ACTIONS = 2;
 	constexpr int EPOCHS = 10000;
-	constexpr int STEPS = 3000;
-	constexpr float TARGET_AVG_REWARD = 2000.0f;
+	constexpr int STEPS = 10000;
+	// How many parallel simulations will be running
+	constexpr int SIMS = 5;
+	constexpr int STEPS_PER_SIM = STEPS/SIMS;
+	constexpr float TARGET_AVG_REWARD = 600.0f;
 
 	std::mt19937 rng((unsigned int)seed);
 	auto mlp = MLP(3, new size_t[]{4, 128, ACTIONS}, {ReLU, NoOp}, STEPS);
 	mlp.initHe();
-	Cartpole env(seed);
 
 	auto observations = new float[STEPS * 4]; // <- hardcoded observation size
 	auto rewards = new float[STEPS];
@@ -96,29 +107,42 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 
 	auto start = std::chrono::high_resolution_clock::now();
 	for (int epoch = 1; epoch <= EPOCHS; epoch++) {
-		// Experience acquisition
-		auto obs = env.reset();
+		auto s = std::chrono::high_resolution_clock::now();
 		// #pragma omp parallel for
-		for (size_t step_idx = 0; step_idx < STEPS; step_idx++) {
-			observations[step_idx * 4 + 0] = obs.vec[0];
-			observations[step_idx * 4 + 1] = obs.vec[1];
-			observations[step_idx * 4 + 2] = obs.vec[2];
-			observations[step_idx * 4 + 3] = obs.vec[3];
+		for (size_t sim = 0; sim < SIMS; sim++) {
+			size_t epoch_sim_seed = (size_t)(seed<<16) + (size_t)sim;
+			epoch_sim_seed = std::hash<size_t>{}(epoch_sim_seed);
+			Cartpole env(epoch_sim_seed);
+			// Experience acquisition
+			auto obs = env.reset();
 
-			float* curLogits = &logits[(size_t)step_idx * ACTIONS];
-			float* curProbs = &probs[(size_t)step_idx * ACTIONS];
-			mlp.forward(observations, curLogits, step_idx);
-			softmax(ACTIONS, curLogits, curProbs);
-			auto action = chooseAction(rng, curProbs, ACTIONS);
+			for (size_t step_idx = sim*STEPS_PER_SIM; step_idx < (sim+1)*STEPS_PER_SIM; step_idx++) {
+				observations[step_idx * 4 + 0] = obs.vec[0];
+				observations[step_idx * 4 + 1] = obs.vec[1];
+				observations[step_idx * 4 + 2] = obs.vec[2];
+				observations[step_idx * 4 + 3] = obs.vec[3];
 
-			auto step = env.step((CartpoleAction)action);
-			obs = step.obs;
-			actions[step_idx] = action;
-			rewards[step_idx] = step.reward;
-			dones[step_idx] = step.done;
-			if (step.done)
-				obs = env.reset();
+				float* curLogits = &logits[(size_t)step_idx * ACTIONS];
+				float* curProbs = &probs[(size_t)step_idx * ACTIONS];
+				mlp.forward(observations, curLogits, step_idx);
+				softmax(ACTIONS, curLogits, curProbs);
+
+				auto action = chooseAction(rng, curProbs, ACTIONS);
+				auto step = env.step((CartpoleAction)action);
+				obs = step.obs;
+				actions[step_idx] = action;
+				rewards[step_idx] = step.reward;
+				dones[step_idx] = step.done;
+				if (step.done)
+					obs = env.reset();
+			}
+			
+			// Set done=true at the of each `sim`
+			dones[(sim+1)*STEPS_PER_SIM - 1] = true;
+
+			// timing.sim_time += sim_time;
 		}
+		timing.sim_forward_time += (std::chrono::high_resolution_clock::now() - s).count();
 
 		// Training on experience
 		// Calculate loss based on returns
@@ -126,16 +150,17 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 		// decrease probability of actions which gave us the least return
 		auto returns = returnsFromRewards(STEPS, rewards, dones);
 
+		// Backward
 		// Calculate dL_da (last layer gradient)
+		s = std::chrono::high_resolution_clock::now();
 		for (size_t i = 0; i < STEPS; i++) {
 			for (size_t j = 0; j < ACTIONS; j++) {
 				float indicator = ((int)j == actions[i]) ? 1.0f : 0.0f;
 				dL_da[i*ACTIONS + j] = (probs[i*ACTIONS+j] - indicator) * returns[i];
 			}
 		}
-		
-		// Backward
-		mlp.backward_optim(dL_da, observations, STEPS, 0.05f);
+		mlp.backward_optim(dL_da, observations, STEPS, 0.1f);
+		timing.backward_time += (std::chrono::high_resolution_clock::now() - s).count();
 
 		auto avg_reward = getAverageEpisodeReward(STEPS, rewards, dones);
 
@@ -144,34 +169,37 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 		}
 		if (avg_reward >= TARGET_AVG_REWARD) {
 			auto stop = std::chrono::high_resolution_clock::now();
-			auto micros = (stop - start).count();
-			std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
-			testAgent([&](auto obs) {
-				mlp.forward(obs.vec.data(), &logits[0], 0);
-				return chooseAction(rng, &logits[0], ACTIONS);
-			}, false);
-			return {true, epoch, micros};
+			timing.total_time = (stop - start).count();
+			// std::println("Finished in {} epochs ({} µs = {} s)", epoch, micros, (double)micros / (double)(1000000000));
+			// testAgent([&](auto obs) {
+			// 	mlp.forward(obs.vec.data(), &logits[0], 0);
+			// 	return chooseAction(rng, &logits[0], ACTIONS);
+			// }, false);
+			return {true, epoch, timing};
 		}
 	}
-	return {false, 0, 0};
+	return {false, 0, timing};
 }
 
 int main() {
-	constexpr unsigned long long SEEDS = 100;
+	constexpr unsigned long long SEEDS = 20;
 
 	double totalTime = 0.0;
 
 	for (unsigned long long seed = 0; seed < SEEDS; seed++) {
 
-		auto [success, epoch, micros] = train(seed);
-		double time = (double)micros / (double)(1000000000);
+		auto [success, epoch, timing] = train(seed);
+		double time = (double)timing.total_time / (double)1e9;
 
 		std::print("seed {}: ", seed);
 		if (success)
-			std::println("finished in {} epochs ({} µs = {} s)", epoch, micros,
-						 time);
+			std::println("finished in {} epochs (total = {} s, sim+forward = {}s, backward = {}s)", epoch,
+			             (double)timing.total_time / (double) 1e9,
+			             (double)timing.sim_forward_time / (double) 1e9,
+			             (double)timing.backward_time / (double) 1e9
+			         );
 		else
-			std::println("failed...", epoch, micros, time);
+			std::println("failed...");
 
 		totalTime += time;
 	}

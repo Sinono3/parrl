@@ -26,10 +26,11 @@ void mul_mat_vec(size_t rows, size_t cols, const float *mat, const float *vec,
 				 float *out) {
 	// Approach: dot product of matrix rows with the vector
 	for (size_t i = 0; i < rows; i++) {
-		out[i] = 0.0f;
+		float x = 0.0f;
 		for (size_t j = 0; j < cols; j++) {
-			out[i] += vec[j] * mat[i * cols + j];
+			x += vec[j] * mat[i * cols + j];
 		}
+		out[i] = x;
 	}
 }
 
