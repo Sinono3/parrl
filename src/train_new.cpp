@@ -5,7 +5,7 @@
 
 static std::uniform_real_distribution<float> uniform01(0.0f, 1.0f);
 
-std::pair<int, float> chooseAction(std::mt19937& rng, float* logits, size_t n) {
+void softmax(size_t n, float *logits, float* probs_out) {
 	// Find max logit
 	float max_logit = logits[0];
 	for (size_t i = 0; i < n; i++)
@@ -17,16 +17,14 @@ std::pair<int, float> chooseAction(std::mt19937& rng, float* logits, size_t n) {
 		sumexp += std::exp(logits[i] - max_logit); // We subtract the max logit for numerical stability
 
 	float logsumexp = std::log(sumexp);
-	// TODO: Don't allocate here
-	auto probs = new float[n];
 	for (size_t i = 0; i < n; i++)
-		probs[i] = std::exp(logits[i] - logsumexp); // We subtract the logsumexp it this way for numerical stability
-	
+		probs_out[i] = std::exp(logits[i] - max_logit - logsumexp); // We subtract the logsumexp it this way for numerical stability
+}
+
+int chooseAction(std::mt19937& rng, float* probs, size_t n) {
 	auto dist = std::discrete_distribution<int>(probs, probs + n);
 	auto action = dist(rng);
-	auto log_prob = std::log(probs[action]);
-	delete [] probs;
-	return {action, log_prob};
+	return action;
 }
 
 std::vector<float> returnsFromRewards(size_t stepcount, const float *rewards,
@@ -92,7 +90,7 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 	auto dones = new bool[STEPS];
 	auto actions = new int[STEPS];
 	auto logits = new float[STEPS * ACTIONS];
-	auto log_probs = new float[STEPS];
+	auto probs = new float[STEPS * ACTIONS];
 	auto dL_da = new float[STEPS * ACTIONS];
 
 	auto start = std::chrono::high_resolution_clock::now();
@@ -106,16 +104,16 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 			observations[step_idx * 4 + 3] = obs.vec[3];
 
 			float* curLogits = &logits[(size_t)step_idx * ACTIONS];
+			float* curProbs = &probs[(size_t)step_idx * ACTIONS];
 			mlp.forward(observations, curLogits, step_idx);
-			auto [action, log_prob] = chooseAction(rng, curLogits, ACTIONS);
+			softmax(ACTIONS, curLogits, curProbs);
+			auto action = chooseAction(rng, curProbs, ACTIONS);
 
 			auto step = env.step((CartpoleAction)action);
 			obs = step.obs;
 			actions[step_idx] = action;
 			rewards[step_idx] = step.reward;
 			dones[step_idx] = step.done;
-			log_probs[step_idx] = log_prob;
-
 			if (step.done)
 				obs = env.reset();
 		}
@@ -128,17 +126,9 @@ std::tuple<bool, int, long long> train(unsigned long long seed) {
 
 		// Calculate dL_da (last layer gradient)
 		for (size_t i = 0; i < STEPS; i++) {
-			float* logit_ptr = &logits[i * ACTIONS];
-			float max_logit = *std::max_element(logit_ptr, logit_ptr + ACTIONS);
-
-			float sumexp = 0.0f;
-			for (size_t j = 0; j < ACTIONS; j++)
-				sumexp += std::exp(logit_ptr[j] - max_logit);
-
 			for (size_t j = 0; j < ACTIONS; j++) {
-				float prob = std::exp(logit_ptr[j] - max_logit) / sumexp;
 				float indicator = ((int)j == actions[i]) ? 1.0f : 0.0f;
-				dL_da[i*ACTIONS + j] = (prob - indicator) * returns[i];
+				dL_da[i*ACTIONS + j] = (probs[i*ACTIONS+j] - indicator) * returns[i];
 			}
 		}
 		

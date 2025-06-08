@@ -29,7 +29,7 @@ template <ActionChooser F> void testAgent(F policy, bool print = true) {
 			}
 		}
 
-		auto [action, _] = policy(obs);
+		auto action = policy(obs);
 		auto step = env.step((CartpoleAction)action);
 		obs = step.obs;
 
