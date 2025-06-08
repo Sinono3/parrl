@@ -227,7 +227,7 @@ int main(int argc, const char **argv) {
 	if ((argc == 2 || argc == 3) && args[1] == "bench") {
 		unsigned long long seeds = 15;
 		if (argc == 3)
-			seeds = std::stoull(args[1]);
+			seeds = std::stoull(args[2]);
 		bench(seeds);
 		return 0;
 	} else if (argc == 2 && args[1] == "once") {
