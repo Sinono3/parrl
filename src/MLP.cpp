@@ -129,6 +129,7 @@ void sigmoid_back(size_t n, const float *z, const float *a, const float *dL_da,
 }
 
 void relu(size_t n, const float *z, float *a) {
+	#pragma omp parallel for schedule(static)
 	for (size_t i = 0; i < n; i++) {
 		a[i] = max(0.0f, z[i]);
 	}
@@ -136,23 +137,10 @@ void relu(size_t n, const float *z, float *a) {
 
 void relu_back(size_t n, const float *z, const float *a, const float *dL_da,
 			float *dL_dz) {
+	#pragma omp parallel for schedule(static)
 	for (size_t i = 0; i < n; i++) {
 		dL_dz[i] = dL_da[i] * (float)(z[i] > 0.0f);
 	}
-}
-
-void softmax(size_t n, const float *z, float *a) {
-	float sumexp = 0.0f;
-	for (size_t i = 0; i < n; i++) {
-		sumexp += exp(z[i]);
-	}
-	float logsumexp = log(sumexp);
-	for (size_t i = 0; i < n; i++) {
-		a[i] = exp(z[i] - logsumexp);
-	}
-}
-void softmax_back(size_t n, const float *z, const float *a, const float *dL_da, float *dL_dz) {
-	throw std::logic_error("not implemented");
 }
 
 void nop(size_t n, const float *z, float *a) {
@@ -306,22 +294,18 @@ void MLP::backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float a
 		auto m = curLayer.inputSize;
 		auto n = curLayer.outputSize;
 
-		{		
+        // NOTE: This currently assumes that these activation backprops can work on single batches
+        // as well as multiple batches. What we're doing wouldn't work for softmax.
+        {
 			auto dL_da = (layerIdx == lastLayerIdx) ? dL_dOUT : this->dL_da;
-			for (size_t b = 0; b < miniBatchSize; b++) {
-				auto offset = b * n;
-				auto b_dL_dz = &dL_dz[offset];
-				auto b_dL_da = &dL_da[offset];
-				auto b_z = &curLayer.z[offset];
-				auto b_a = &curLayer.a[offset];
-				curLayer.activation.backprop(n, b_z, b_a, b_dL_da, b_dL_dz);
-			}
-		}
+			curLayer.activation.backprop(miniBatchSize * n, curLayer.z, curLayer.a, dL_da, dL_dz);
+        }
 
 		// Calculate gradient for the previous layer's output (setup for the next iteration)
 		// (This will be used in the next iteration, except on the last one [thus the if statement])
 		// NOTE: why this works: involves a bit of a mathematical/memory-contiguity hack
 		if (layerIdx > 0) {
+			#pragma omp parallel for
 			for (size_t b = 0; b < miniBatchSize; b++) {
 				auto b_dL_dz = &dL_dz[b * n]; // <-- cur layer offset
 				auto b_dL_da = &dL_da[b * m]; // <-- last layer offset
@@ -330,8 +314,7 @@ void MLP::backward_optim(float* dL_dOUT, float *X, size_t miniBatchSize, float a
 		}
 
 		// If we're on the first layer, check the input instead (there's no i-1 layer)
-		auto prevLayerOutput =
-			(layerIdx > 0) ? this->layers[(size_t)layerIdx - 1].a : X;
+		auto prevLayerOutput = (layerIdx > 0) ? this->layers[(size_t)layerIdx - 1].a : X;
 		// UPDATE WEIGHTS
 		for (size_t b = 0; b < miniBatchSize; b++) {
 			auto b_prevLayerOutput =
